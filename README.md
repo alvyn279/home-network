@@ -38,6 +38,9 @@ A modular home network infrastructure project focused on reliability, automation
 ### Resiliency
 - **[wifi-reboot](resiliency/wifi-reboot/)** - Automatic modem power cycling for internet reliability
 
+### Control
+- **[remote-access](control/remote-access/)** - Secure remote access to home network via OpenVPN
+
 ### Future Modules
 - **storage/** - Network attached storage and backup solutions
 - **monitoring/** - Network and system monitoring infrastructure  
