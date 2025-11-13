@@ -1,251 +1,226 @@
-# Home Network Redundancy & Auto-Modem Reset Design
+# WiFi Reboot Module - Automatic Modem Reset
 
-## Problem Statement
-WiFi modem occasionally loses internet connectivity despite showing green status light. Requires manual power cycling when away from home, leaving smart home devices offline.
+## Problem
+ISP modem occasionally loses internet connectivity despite showing green status light. Requires manual power cycling when away from home.
 
-## Solution Architecture
+## Solution
+Raspberry Pi monitors internet connectivity and automatically power cycles modem via smart plug when failures detected.
 
-### Core Components
-
-#### 1. Secondary Private Network
-- **Purpose**: Independent monitoring and control network
-- **Hardware**: Dedicated router (TP-Link Archer, ASUS, or Ubiquiti)
-- **Network Range**: 192.168.2.x (separate from main 192.168.1.x)
-- **Power**: Different electrical circuit from main modem
-- **Benefits**: 
-  - Network redundancy
-  - Independent monitoring capability
-  - Foundation for home automation ecosystem
-
-#### 2. Smart Power Control
-- **Device Options**:
-  - TP-Link Kasa HS110 (WiFi smart plug with energy monitoring)
-  - Shelly 1PM (Advanced relay with API)
-  - Sonoff S31 (Budget option with Tasmota firmware)
-- **Connection**: Main modem plugged into smart switch
-- **Control**: Connected to secondary network for reliability
-
-#### 3. Internet Monitoring System
-- **Monitoring Methods**:
-  - Ping tests to multiple DNS servers (8.8.8.8, 1.1.1.1, 9.9.9.9)
-  - HTTP requests to reliable endpoints
-  - Speed test validation (optional)
-- **Failure Detection**: 3+ consecutive failures before action
-- **Reset Logic**: Power off 10s, power on, wait 2min for recovery
-
-#### 4. Remote Access Options
-- **VPN Server**: On secondary router for external access
-- **Cellular Backup**: USB LTE modem on secondary network
-- **Cloud Integration**: AWS IoT or similar for remote monitoring
-- **Mobile App**: Direct control via smartphone
-
-### Network Topology
+## Architecture
 
 ```
-Internet → Main Modem → Primary Router (192.168.1.x)
-                    ↓
-                Smart Plug ← Secondary Router (192.168.2.x)
-                           ↓
-                    Monitoring Device
+Internet → ISP Modem (via Smart Plug) → Main Router → Secondary Router → Pi
+                ↑                                           ↓
+                └─────── Power Control ←──────────────────────┘
 ```
 
-### Implementation Phases
+## Hardware Requirements
 
-#### Phase 1: Basic Auto-Reset - Detailed Shopping List
+- **Raspberry Pi 4** (2GB+ RAM) - ~$75 CAD
+- **TP-Link Kasa HS103** smart plug - ~$25 CAD  
+- **MicroSD Card** (32GB Class 10) - ~$15 CAD
+- **Secondary Router** (TP-Link AX23) - ~$80 CAD
 
-**What You Need to Buy:**
+**Total: ~$195 CAD**
 
-1. **Secondary Router** ($40-60)
-   - TP-Link Archer A6 or A7
-   - Creates your "private home network"
-   - Plugs into wall power outlet
+## Network Configuration
 
-2. **Smart Power Outlet** ($15-25)
-   - TP-Link Kasa HS103 (basic) or HS110 (with energy monitoring)
-   - Your main modem plugs INTO this
-   - This plugs into wall outlet
-   - Controlled via WiFi
-
-3. **Raspberry Pi 4 Kit** ($75)
-   - Small computer to run monitoring code
-   - Connects to secondary router WiFi
-   - Runs 24/7 monitoring script
-
-4. **Ethernet Cable** ($5-10)
-   - Cat6 cable, 3-6 feet
-   - Connects secondary router to your main router
-
-**Total Cost: ~$150**
-
-**Physical Setup:**
-```
-Wall Outlet → Smart Plug → Your Main Modem
-Wall Outlet → Secondary Router
-Main Router ← Ethernet Cable → Secondary Router ← WiFi ← Raspberry Pi
-```
-
-**Network Configuration for Home Project:**
-
-**Your Specific IP Layout:**
-```
-Main Network: 192.168.1.x
-- Main Router: 192.168.1.1
-- Your devices: 192.168.1.100+
-
-Secondary Network: 192.168.2.x  
-- Secondary Router: 192.168.2.1
-- Raspberry Pi: 192.168.2.50
+**IP Layout:**
+- Main Network: 192.168.1.x (existing)
+- Secondary Network: 192.168.2.x (monitoring)
+- Pi: 192.168.2.50
 - Smart Plug: 192.168.2.100
+
+## Smart Plug Control (python-kasa)
+
+### Installation
+```bash
+pip install python-kasa
 ```
 
-**Physical Connections:**
+### Basic Control
+```python
+import asyncio
+from kasa import SmartPlug
+
+async def restart_modem():
+    plug = SmartPlug("192.168.2.100")  # HS103 IP
+    
+    # Power cycle modem
+    await plug.turn_off()
+    await asyncio.sleep(10)
+    await plug.turn_on()
+    
+    print("Modem restarted")
+
+# Usage
+asyncio.run(restart_modem())
 ```
-Wall → Smart Plug → ISP Modem → Main Router (192.168.1.1)
-                                      ↓ Ethernet
-Wall → Secondary Router (192.168.2.1) ← WiFi ← Raspberry Pi
+
+### Discovery
+```bash
+# Find Kasa devices on network
+python -m kasa discover
+
+# Or scan for port 9999
+nmap -p 9999 192.168.2.0/24
 ```
 
-**How It Works:**
-1. **Raspberry Pi** runs Python script that pings internet every minute
-2. **When internet fails** → Pi sends WiFi command to smart plug
-3. **Smart plug** physically cuts power to your ISP modem
-4. **Smart plug** turns power back on after 10 seconds
-5. **Pi waits** 2 minutes for modem to boot up
-6. **Repeat** monitoring
+## Monitoring Script Structure
 
-**Traffic Flow for Internet Monitoring:**
-- Pi pings 8.8.8.8 → Secondary Router → Main Router → Modem → Internet
-- When internet fails: Pi → Smart Plug (local network only)
+```python
+import asyncio
+import subprocess
+from kasa import SmartPlug
+from datetime import datetime
 
-*See net_deep_dive.md for detailed networking concepts*
+class InternetMonitor:
+    def __init__(self):
+        self.plug_ip = "192.168.2.100"
+        self.test_hosts = ["8.8.8.8", "1.1.1.1"]
+        self.failure_threshold = 3
+        self.check_interval = 60
+        
+    def ping_test(self, host):
+        try:
+            result = subprocess.run(['ping', '-c', '1', '-W', '3', host], 
+                                  capture_output=True, timeout=5)
+            return result.returncode == 0
+        except:
+            return False
+    
+    def check_internet(self):
+        for host in self.test_hosts:
+            if self.ping_test(host):
+                return True
+        return False
+    
+    async def restart_modem(self):
+        plug = SmartPlug(self.plug_ip)
+        await plug.turn_off()
+        await asyncio.sleep(10)
+        await plug.turn_on()
+        print(f"{datetime.now()}: Modem restarted")
+    
+    async def monitor(self):
+        failures = 0
+        while True:
+            if self.check_internet():
+                failures = 0
+            else:
+                failures += 1
+                print(f"Internet down ({failures}/{self.failure_threshold})")
+                
+                if failures >= self.failure_threshold:
+                    await self.restart_modem()
+                    failures = 0
+                    await asyncio.sleep(120)  # Wait for modem boot
+            
+            await asyncio.sleep(self.check_interval)
 
-#### Phase 2: Remote Access
-1. Configure VPN on secondary router
-2. Set up mobile notifications
-3. Create web dashboard for status
-4. Add manual override controls
+if __name__ == "__main__":
+    monitor = InternetMonitor()
+    asyncio.run(monitor.monitor())
+```
 
-#### Phase 3: Advanced Monitoring
-1. Add cellular backup connectivity
-2. Implement cloud logging
-3. Create predictive failure detection
-4. Integrate with home automation platform
+## Deployment Options
 
-### Hardware Requirements
+### Option 1: Systemd Service (Recommended)
+```bash
+# Create service file
+sudo nano /etc/systemd/system/internet-monitor.service
+```
 
-#### Secondary Router
-- **Budget**: TP-Link Archer A7 (~$50)
-- **Mid-range**: ASUS AX1800 (~$100)
-- **Advanced**: Ubiquiti Dream Machine SE (~$400)
+```ini
+[Unit]
+Description=Internet Monitor
+After=network.target
 
-#### Smart Power Control
-- **Simple**: TP-Link Kasa HS110 (~$25)
-- **Advanced**: Shelly 1PM (~$20)
-- **DIY**: Sonoff + Tasmota (~$15)
+[Service]
+Type=simple
+User=pi
+ExecStart=/usr/bin/python3 /home/pi/internet_monitor.py
+Restart=always
+RestartSec=30
 
-#### Monitoring Device
-- **Raspberry Pi 4** (~$75) - Full Linux environment
-- **ESP32** (~$10) - Minimal embedded solution
-- **Existing computer** - Repurpose available hardware
+[Install]
+WantedBy=multi-user.target
+```
 
-### Software Stack Options
+```bash
+# Enable and start
+sudo systemctl enable internet-monitor.service
+sudo systemctl start internet-monitor.service
 
-#### Lightweight Approach
-- Python script with cron scheduling
-- Simple HTTP API for smart plug control
-- Basic logging to local files
+# Check status
+sudo systemctl status internet-monitor.service
+```
 
-#### Home Automation Integration
-- Home Assistant for centralized control
-- Node-RED for visual flow programming
-- Grafana for monitoring dashboards
+### Option 2: Cron Job (Simple)
+```bash
+# Edit crontab
+crontab -e
 
-#### Cloud-Native Approach
-- AWS IoT Core for device management
-- Lambda functions for logic processing
-- CloudWatch for monitoring and alerts
+# Run every minute
+* * * * * /usr/bin/python3 /home/pi/internet_monitor.py
+```
 
-### Security Considerations
+## Setup Steps
 
-1. **Network Isolation**: Keep secondary network separate
-2. **Access Control**: Strong passwords and key-based auth
-3. **Firmware Updates**: Regular security patches
-4. **VPN Security**: WireGuard or OpenVPN with certificates
-5. **API Security**: Authentication tokens for smart devices
+1. **Install Raspberry Pi OS** on SD card
+2. **Connect Pi to secondary router WiFi**
+3. **Install dependencies:** `pip install python-kasa`
+4. **Deploy monitoring script** to `/home/pi/internet_monitor.py`
+5. **Set up systemd service** (recommended)
+6. **Test with:** `sudo journalctl -u internet-monitor.service -f`
 
-### Monitoring & Alerting
+## Configuration
 
-#### Local Monitoring
-- Device status dashboard
-- Connection quality metrics
-- Power cycle event logs
-- Network performance tracking
+### Failure Detection
+- **Test Hosts:** 8.8.8.8, 1.1.1.1 (Google, Cloudflare DNS)
+- **Failure Threshold:** 3 consecutive failures
+- **Check Interval:** 60 seconds
+- **Restart Delay:** 10 seconds off, 120 seconds recovery wait
 
-#### Remote Notifications
-- SMS alerts for outages
-- Email reports for extended downtime
-- Push notifications via mobile app
-- Slack/Discord integration for tech updates
+### Local Control Benefits
+- Works during internet outages
+- No cloud dependency
+- Faster response (~1 second vs ~5 seconds)
+- More reliable than cloud API
 
-### Future Expansion Opportunities
+## Monitoring
 
-#### Home Automation Platform
-- Smart lighting control
-- HVAC monitoring and control
-- Security camera management
-- Environmental sensors
+### Logs
+```bash
+# Service logs
+sudo journalctl -u internet-monitor.service -f
 
-#### Network Services
-- Local file server (NAS)
-- Media streaming server
-- Home DNS server
-- Network-attached backup
+# System logs
+tail -f /var/log/syslog | grep internet-monitor
+```
 
-#### IoT Device Management
-- Device provisioning system
-- Firmware update management
-- Security monitoring
-- Performance optimization
+### Status Check
+```bash
+# Service status
+sudo systemctl status internet-monitor.service
 
-### Cost Estimate
+# Test smart plug manually
+python -c "import asyncio; from kasa import SmartPlug; asyncio.run(SmartPlug('192.168.2.100').update())"
+```
 
-#### Minimal Setup (~$100)
-- Secondary router: $50
-- Smart plug: $25
-- Raspberry Pi Zero: $25
+## Security Considerations
 
-#### Complete Setup (~$300)
-- Quality router: $150
-- Advanced smart switch: $50
-- Raspberry Pi 4 kit: $100
+- Pi runs on isolated secondary network
+- Smart plug uses local API (no cloud dependency)
+- No port forwarding required
+- Automatic updates via `unattended-upgrades`
 
-#### Enterprise-grade (~$600)
-- Ubiquiti equipment: $400
-- Professional monitoring: $200
+## Future Enhancements
 
-### Success Metrics
-
-1. **Reliability**: 99%+ internet uptime
-2. **Response Time**: <5min outage detection
-3. **Recovery Time**: <3min modem restart
-4. **Remote Access**: 100% availability via secondary network
-5. **False Positives**: <1% incorrect resets
-
-### Risk Mitigation
-
-1. **Power Failure**: UPS for secondary network
-2. **Hardware Failure**: Redundant monitoring devices
-3. **Network Loops**: Proper VLAN configuration
-4. **ISP Issues**: Cellular backup for critical alerts
-5. **Smart Plug Failure**: Manual bypass switch
-
-## Next Steps
-
-1. Research and purchase secondary router
-2. Select appropriate smart power control device
-3. Plan network IP addressing scheme
-4. Design monitoring script architecture
-5. Create testing plan for failure scenarios
+- **Notifications:** SMS/email alerts on failures
+- **Web Dashboard:** Status monitoring interface  
+- **Multiple ISPs:** Failover between connections
+- **Logging:** Detailed outage tracking and analysis
 
 #### Phase 2: Remote Access
 1. Configure VPN on secondary router
