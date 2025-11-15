@@ -1,0 +1,36 @@
+[Unit]
+Description=Internet Monitor - Automatic Modem Reset
+Documentation=https://github.com/your-repo/home_cluster/resiliency/wifi-reboot
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi
+
+# Configuration via environment variables
+Environment=PLUG_IP=192.168.2.100
+Environment=CHECK_INTERVAL_IN_SECONDS=60
+Environment=FAILURE_THRESHOLD=3
+Environment=TEST_HOSTS=8.8.8.8,1.1.1.1,9.9.9.9
+Environment=RESTART_DELAY_IN_SECONDS=10
+Environment=RECOVERY_WAIT_IN_SECONDS=120
+
+# Service execution
+ExecStart=/usr/bin/python3 /home/pi/internet_monitor.py
+Restart=always
+RestartSec=30
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=internet-monitor
+
+[Install]
+WantedBy=multi-user.target
