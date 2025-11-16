@@ -26,10 +26,10 @@ Internet → ISP Modem (via Smart Plug) → Main Router → Secondary Router →
 ## Network Configuration
 
 **IP Layout:**
-- Main Network: 192.168.1.x (existing)
-- Secondary Network: 192.168.2.x (monitoring)
-- Pi: 192.168.2.50
-- Smart Plug: 192.168.2.100
+- Main Network: 192.168.X.x (your existing home network)
+- Secondary Network: 192.168.Y.x (monitoring network, if using secondary router)
+- Pi: 192.168.Y.50 (or same network as smart plug)
+- Smart Plug: 192.168.X.Z (discovered via network scan)
 
 ## Smart Plug Control (python-kasa)
 

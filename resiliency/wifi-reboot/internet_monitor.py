@@ -9,7 +9,7 @@ import asyncio
 import subprocess
 import logging
 import random
-from kasa import SmartPlug
+from kasa import Discover
 
 # Configure logging
 logging.basicConfig(
@@ -63,17 +63,18 @@ class InternetMonitor:
     async def restart_modem(self):
         """Power cycle the modem via smart plug"""
         try:
-            plug = SmartPlug(self.plug_ip)
+            # Use new API instead of deprecated SmartPlug
+            device = await Discover.discover_single(self.plug_ip)
             
             logger.warning("Restarting modem...")
             
             # Turn off modem
-            await plug.turn_off()
+            await device.turn_off()
             logger.info("Modem powered OFF")
             await asyncio.sleep(self.restart_delay_in_seconds)
             
             # Turn on modem
-            await plug.turn_on()
+            await device.turn_on()
             logger.info("Modem powered ON")
             logger.info(f"Waiting {self.recovery_wait_in_seconds}s for modem recovery...")
             

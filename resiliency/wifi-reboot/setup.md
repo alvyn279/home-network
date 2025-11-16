@@ -3,26 +3,59 @@
 ## Prerequisites
 
 1. **Raspberry Pi 4** with Raspberry Pi OS installed
-2. **TP-Link Kasa HS103** smart plug configured on network
-3. **Secondary router** (TP-Link AX23) set up with WiFi network
-4. **Static IP reservation** for smart plug (192.168.2.100)
+2. **TP-Link Kasa HS103** smart plug configured on your network
+3. **Secondary router** (TP-Link AX23) set up with WiFi network (optional for basic setup)
+4. **Smart plug IP address** - Use discovery commands below to find it
+
+### Find Your Smart Plug IP
+
+```bash
+# Method 1: Use python-kasa discovery
+source ~/internet-monitor-env/bin/activate
+python3 -m kasa discover
+deactivate
+
+# Method 2: Scan your network (replace 192.168.X with your network)
+nmap -sn 192.168.X.0/24
+
+# Method 3: Check router's DHCP client list
+# Navigate to your router's web interface (usually 192.168.X.1)
+```
+
+**Note:** Replace `192.168.X.Z` in all configuration files with your actual smart plug IP address.
 
 ## Installation Steps
 
-### 1. Install Dependencies
+### 1. Install System Dependencies
 
 ```bash
 # Update system
 sudo apt update && sudo apt upgrade -y
+
+# Install Python virtual environment tools
+sudo apt install python3-venv python3-pip -y
+```
+
+### 2. Create Python Virtual Environment
+
+```bash
+# Create virtual environment
+python3 -m venv ~/internet-monitor-env
+
+# Activate virtual environment
+source ~/internet-monitor-env/bin/activate
 
 # Install Python dependencies
 pip install python-kasa
 
 # Verify installation
 python -c "import kasa; print('python-kasa installed successfully')"
+
+# Deactivate for now
+deactivate
 ```
 
-### 2. Deploy Files
+### 3. Deploy Files
 
 ```bash
 # Copy Python script to Pi home directory
@@ -31,11 +64,13 @@ scp internet_monitor.py pi@192.168.2.50:/home/pi/
 # Make script executable
 chmod +x /home/pi/internet_monitor.py
 
-# Test script manually
+# Test script with virtual environment
+source ~/internet-monitor-env/bin/activate
 python3 /home/pi/internet_monitor.py
+deactivate
 ```
 
-### 3. Install systemd Service
+### 4. Install systemd Service
 
 ```bash
 # Copy service file to systemd directory
@@ -128,17 +163,41 @@ sudo systemctl disable internet-monitor.service
 # Check for Python errors
 sudo journalctl -u internet-monitor.service -n 20
 
-# Test script manually
+# Test script manually with virtual environment
+source ~/internet-monitor-env/bin/activate
 python3 /home/pi/internet_monitor.py
+deactivate
 ```
 
 **Can't find smart plug:**
 ```bash
-# Discover Kasa devices
+# Discover Kasa devices (with virtual environment)
+source ~/internet-monitor-env/bin/activate
 python3 -m kasa discover
 
-# Check network connectivity
-ping 192.168.2.100
+# Or target specific network (replace X with your network number)
+python3 -c "
+import asyncio
+from kasa import Discover
+async def find():
+    devices = await Discover.discover(target='192.168.X.255')
+    for ip, dev in devices.items():
+        await dev.update()
+        print(f'Found: {ip} - {dev.alias} ({dev.model})')
+asyncio.run(find())
+"
+deactivate
+
+# Check network connectivity (replace with your plug's actual IP)
+ping 192.168.X.Z
+```
+
+**Missing dependencies:**
+```bash
+# Reinstall in virtual environment
+source ~/internet-monitor-env/bin/activate
+pip install --upgrade python-kasa
+deactivate
 ```
 
 **Permission errors:**
@@ -173,20 +232,22 @@ result = subprocess.run(['ping', '-c', '1', '8.8.8.8'], capture_output=True)
 print('Internet OK' if result.returncode == 0 else 'Internet DOWN')
 "
 
-# Test smart plug control
+# Test smart plug control (with virtual environment)
+source ~/internet-monitor-env/bin/activate
 python3 -c "
 import asyncio
-from kasa import SmartPlug
+from kasa import Discover
 async def test():
-    plug = SmartPlug('192.168.2.100')
+    device = await Discover.discover_single('192.168.X.Z')  # Replace with your plug's IP
     print('Turning OFF...')
-    await plug.turn_off()
+    await device.turn_off()
     await asyncio.sleep(2)
     print('Turning ON...')
-    await plug.turn_on()
+    await device.turn_on()
     print('Test complete')
 asyncio.run(test())
 "
+deactivate
 ```
 
 ### Simulate Internet Outage
