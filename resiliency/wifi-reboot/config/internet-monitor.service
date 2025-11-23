@@ -6,9 +6,9 @@ Wants=network.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-WorkingDirectory=/home/pi
+User=username
+Group=username
+WorkingDirectory=/home/username/workplace/home-network/resiliency/wifi-reboot
 
 # Configuration via environment variables
 Environment=PLUG_IP=192.168.X.Z
@@ -19,7 +19,7 @@ Environment=RESTART_DELAY_IN_SECONDS=10
 Environment=RECOVERY_WAIT_IN_SECONDS=120
 
 # Service execution
-ExecStart=/home/pi/internet-monitor-env/bin/python /home/pi/internet_monitor.py
+ExecStart=/home/username/workplace/home-network/resiliency/wifi-reboot/venv/bin/python /home/username/workplace/home-network/resiliency/wifi-reboot/internet_monitor.py
 Restart=always
 RestartSec=30
 

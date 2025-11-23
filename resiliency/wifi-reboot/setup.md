@@ -39,17 +39,20 @@ sudo apt install python3-venv python3-pip -y
 ### 2. Create Python Virtual Environment
 
 ```bash
+# Run the install script
+./install.sh
+```
+
+**Or manually:**
+```bash
 # Create virtual environment
-python3 -m venv ~/internet-monitor-env
+python3 -m venv venv
 
 # Activate virtual environment
-source ~/internet-monitor-env/bin/activate
+source venv/bin/activate
 
 # Install Python dependencies
-pip install python-kasa
-
-# Verify installation
-python -c "import kasa; print('python-kasa installed successfully')"
+pip install -r requirements.txt
 
 # Deactivate for now
 deactivate
