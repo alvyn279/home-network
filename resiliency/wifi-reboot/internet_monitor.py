@@ -5,11 +5,18 @@ Monitors internet connectivity and power cycles modem when failures detected.
 """
 
 import os
+import sys
 import asyncio
 import subprocess
 import logging
 import random
 from kasa import Discover
+from dotenv import load_dotenv
+
+# Load test environment if --test flag is provided
+if '--test' in sys.argv:
+    load_dotenv('test.env')
+    print("Loaded test configuration from test.env")
 
 # Configure logging
 logging.basicConfig(

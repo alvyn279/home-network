@@ -70,9 +70,9 @@ cd /home/username/workplace/home-network/resiliency/wifi-reboot
 # Run installation script
 ./install.sh
 
-# Test script with virtual environment
+# Test script with virtual environment and test configuration
 source venv/bin/activate
-python3 internet_monitor.py
+python3 internet_monitor.py --test
 deactivate
 ```
 
@@ -243,6 +243,27 @@ sudo journalctl -u internet-monitor.service > monitor_logs.txt
 ```
 
 ## Testing
+
+## Testing
+
+### Manual Testing with Test Configuration
+
+```bash
+cd /home/username/workplace/home-network/resiliency/wifi-reboot
+source venv/bin/activate
+
+# Run script with test configuration
+python3 internet_monitor.py --test
+
+# Stop with Ctrl+C
+deactivate
+```
+
+The `test.env` file provides faster intervals and lower thresholds for testing:
+- Check interval: 10 seconds (vs 60 in production)
+- Failure threshold: 2 (vs 3 in production)  
+- Restart delay: 5 seconds (vs 10 in production)
+- Recovery wait: 30 seconds (vs 120 in production)
 
 ### Manual Testing
 

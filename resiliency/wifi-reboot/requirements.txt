@@ -11,6 +11,7 @@ mashumaro==3.17
 multidict==6.7.0
 propcache==0.4.1
 pycparser==2.23
+python-dotenv==1.0.0
 python-kasa==0.10.2
 typing_extensions==4.15.0
 yarl==1.22.0
