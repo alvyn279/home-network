@@ -44,6 +44,7 @@ class InternetMonitor:
             self.outage_trigger_time = None
             self.outage_recovery_time = None
             self.outage_active = False
+            self.outage_completed = False
             
             if self.simulate_outage:
                 # Random outage between 30-60 seconds after start
@@ -62,8 +63,9 @@ class InternetMonitor:
         if TEST_MODE:
             current_time = time.time()
             
-            # Check if we should trigger outage simulation
-            if self.simulate_outage and not self.outage_active and current_time >= self.outage_trigger_time:
+            # Check if we should trigger outage simulation (only once)
+            if (self.simulate_outage and not self.outage_active and not self.outage_completed 
+                and current_time >= self.outage_trigger_time):
                 self.outage_active = True
                 # Set recovery time 60-90 seconds after outage starts
                 self.outage_recovery_time = current_time + random.randint(60, 90)
@@ -73,6 +75,7 @@ class InternetMonitor:
             # Check if we should recover from outage
             if self.outage_active and current_time >= self.outage_recovery_time:
                 self.outage_active = False
+                self.outage_completed = True
                 logger.warning("✅ SIMULATED OUTAGE RECOVERED - Pings will now succeed")
             
             # If outage is active, simulate failure
