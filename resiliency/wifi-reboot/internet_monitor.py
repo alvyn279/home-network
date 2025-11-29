@@ -14,13 +14,14 @@ from kasa import Discover
 from dotenv import load_dotenv
 
 # Load test environment if --test flag is provided
-if '--test' in sys.argv:
+TEST_MODE = '--test' in sys.argv
+if TEST_MODE:
     load_dotenv('test.env')
     print("Loaded test configuration from test.env")
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG if TEST_MODE else logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('internet-monitor')
@@ -44,13 +45,33 @@ class InternetMonitor:
     def ping_test(self, host):
         """Test connectivity to a single host"""
         try:
+            if TEST_MODE:
+                logger.debug(f"Pinging {host}...")
+            
             result = subprocess.run(
                 ['ping', '-c', '1', '-W', '3', host], 
                 capture_output=True, 
-                timeout=5
+                timeout=5,
+                text=True
             )
+            
+            if TEST_MODE:
+                if result.returncode == 0:
+                    # Extract ping time from output
+                    output_lines = result.stdout.strip().split('\n')
+                    ping_line = next((line for line in output_lines if 'time=' in line), '')
+                    if ping_line:
+                        time_part = ping_line.split('time=')[1].split()[0]
+                        logger.debug(f"✓ {host} responded in {time_part}")
+                    else:
+                        logger.debug(f"✓ {host} responded (no timing info)")
+                else:
+                    logger.debug(f"✗ {host} failed (exit code: {result.returncode})")
+            
             return result.returncode == 0
         except subprocess.TimeoutExpired:
+            if TEST_MODE:
+                logger.debug(f"✗ {host} timed out (>5s)")
             return False
         except Exception as e:
             logger.error(f"Ping error to {host}: {e}")
