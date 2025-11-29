@@ -11,6 +11,7 @@ import subprocess
 import logging
 import random
 import time
+from datetime import datetime
 from kasa import Discover
 from dotenv import load_dotenv
 
@@ -36,6 +37,10 @@ class InternetMonitor:
         self.test_hosts = os.getenv('TEST_HOSTS').split(',')
         self.restart_delay_in_seconds = int(os.getenv('RESTART_DELAY_IN_SECONDS'))
         self.recovery_wait_in_seconds = int(os.getenv('RECOVERY_WAIT_IN_SECONDS'))
+        
+        # Stats tracking for production
+        self.stats = {host: {'success': 0, 'total': 0} for host in self.test_hosts}
+        self.last_stats_report = time.time()
         
         # Outage simulation for test mode only
         if TEST_MODE:
@@ -83,6 +88,7 @@ class InternetMonitor:
                 logger.debug(f"✗ {host} failed (simulated outage)")
                 return False
         
+        success = False
         try:
             if TEST_MODE:
                 logger.debug(f"Pinging {host}...")
@@ -94,8 +100,10 @@ class InternetMonitor:
                 text=True
             )
             
+            success = result.returncode == 0
+            
             if TEST_MODE:
-                if result.returncode == 0:
+                if success:
                     # Extract ping time from output
                     output_lines = result.stdout.strip().split('\n')
                     ping_line = next((line for line in output_lines if 'time=' in line), '')
@@ -107,14 +115,42 @@ class InternetMonitor:
                 else:
                     logger.debug(f"✗ {host} failed (exit code: {result.returncode})")
             
-            return result.returncode == 0
         except subprocess.TimeoutExpired:
             if TEST_MODE:
                 logger.debug(f"✗ {host} timed out (>5s)")
-            return False
+            success = False
         except Exception as e:
             logger.error(f"Ping error to {host}: {e}")
-            return False
+            success = False
+        
+        # Update stats (production mode only)
+        if not TEST_MODE:
+            self.stats[host]['total'] += 1
+            if success:
+                self.stats[host]['success'] += 1
+            
+            # Report hourly stats
+            current_time = time.time()
+            if current_time - self.last_stats_report >= 3600:  # 1 hour
+                self.report_hourly_stats()
+                self.last_stats_report = current_time
+        
+        return success
+    
+    def report_hourly_stats(self):
+        """Report ping success statistics for the past hour"""
+        current_hour = datetime.now().strftime("%Y-%m-%d %H:00")
+        logger.info(f"📊 Hourly Ping Statistics ({current_hour}):")
+        for host in self.test_hosts:
+            stats = self.stats[host]
+            if stats['total'] > 0:
+                success_rate = (stats['success'] / stats['total']) * 100
+                logger.info(f"  {host}: {stats['success']}/{stats['total']} ({success_rate:.1f}%)")
+            else:
+                logger.info(f"  {host}: No pings recorded")
+        
+        # Reset stats for next hour
+        self.stats = {host: {'success': 0, 'total': 0} for host in self.test_hosts}
     
     def check_internet(self):
         """Test internet connectivity using multiple hosts"""

@@ -16,7 +16,7 @@ Environment=CHECK_INTERVAL_IN_SECONDS=60
 Environment=FAILURE_THRESHOLD=3
 Environment=TEST_HOSTS=8.8.8.8,1.1.1.1,9.9.9.9
 Environment=RESTART_DELAY_IN_SECONDS=10
-Environment=RECOVERY_WAIT_IN_SECONDS=120
+Environment=RECOVERY_WAIT_IN_SECONDS=180
 
 # Service execution
 ExecStart=/home/username/workplace/home-network/resiliency/wifi-reboot/venv/bin/python /home/username/workplace/home-network/resiliency/wifi-reboot/internet_monitor.py
