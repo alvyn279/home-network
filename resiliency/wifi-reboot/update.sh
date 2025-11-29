@@ -7,10 +7,6 @@ echo "Updating internet-monitor service..."
 # Navigate to project directory
 cd /home/username/workplace/home-network/resiliency/wifi-reboot
 
-# Pull latest changes
-echo "Pulling latest code..."
-git pull
-
 # Update dependencies using existing install script
 echo "Updating dependencies..."
 ./install.sh
