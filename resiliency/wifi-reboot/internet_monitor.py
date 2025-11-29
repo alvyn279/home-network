@@ -10,6 +10,7 @@ import asyncio
 import subprocess
 import logging
 import random
+import time
 from kasa import Discover
 from dotenv import load_dotenv
 
@@ -36,6 +37,18 @@ class InternetMonitor:
         self.restart_delay_in_seconds = int(os.getenv('RESTART_DELAY_IN_SECONDS'))
         self.recovery_wait_in_seconds = int(os.getenv('RECOVERY_WAIT_IN_SECONDS'))
         
+        # Outage simulation for test mode only
+        if TEST_MODE:
+            self.simulate_outage = os.getenv('SIMULATE_OUTAGE', 'false').lower() == 'true'
+            self.start_time = time.time()
+            self.outage_trigger_time = None
+            self.outage_active = False
+            
+            if self.simulate_outage:
+                # Random outage between 30-60 seconds after start
+                self.outage_trigger_time = self.start_time + random.randint(30, 60)
+                logger.info(f"Outage simulation enabled - will trigger at {int(self.outage_trigger_time - self.start_time)}s")
+        
         logger.info("Internet Monitor Starting:")
         logger.info(f"  Smart Plug: {self.plug_ip}")
         logger.info(f"  Check Interval: {self.check_interval_in_seconds}s")
@@ -44,6 +57,18 @@ class InternetMonitor:
         
     def ping_test(self, host):
         """Test connectivity to a single host"""
+        # Outage simulation (test mode only)
+        if TEST_MODE:
+            # Check if we should trigger outage simulation
+            if self.simulate_outage and not self.outage_active and time.time() >= self.outage_trigger_time:
+                self.outage_active = True
+                logger.warning("🔥 SIMULATED OUTAGE TRIGGERED - All pings will now fail")
+            
+            # If outage is active, simulate failure
+            if self.outage_active:
+                logger.debug(f"✗ {host} failed (simulated outage)")
+                return False
+        
         try:
             if TEST_MODE:
                 logger.debug(f"Pinging {host}...")
