@@ -27,9 +27,9 @@ A modular home network infrastructure project focused on reliability, automation
         ┌─────────────────────┼─────────────────────┐
         │                     │                     │
    ┌────▼────┐         ┌─────▼─────┐         ┌─────▼─────┐
-   │Raspberry│         │   Smart   │         │  Future   │
-   │   Pi    │         │   Plug    │         │ Devices   │
-   │(Monitor)│         │(Control)  │         │           │
+   │HP Elite │         │   Smart   │         │  Future   │
+   │Desk 800 │         │   Plug    │         │ Devices   │
+   │(Compute)│         │(Control)  │         │           │
    └─────────┘         └───────────┘         └───────────┘
 ```
 
@@ -63,7 +63,7 @@ A modular home network infrastructure project focused on reliability, automation
 ## Hardware Foundation
 
 - **Secondary Router**: Creates isolated network for control and monitoring
-- **Raspberry Pi**: Runs monitoring and automation scripts
+- **HP EliteDesk 800 G1 DM**: Primary compute node running Ubuntu Desktop for services and applications
 - **Smart Plugs**: Remote power control for devices
 - **Network Switches**: Expand ethernet connectivity as needed
 

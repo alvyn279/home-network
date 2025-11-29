@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-1. **Raspberry Pi 4** with Raspberry Pi OS installed
+1. **Ubuntu Desktop** system (HP EliteDesk 800 G1 DM or similar)
 2. **TP-Link Kasa HS103** smart plug configured on your network
 3. **Secondary router** (TP-Link AX23) set up with WiFi network (optional for basic setup)
 4. **Smart plug IP address** - Use discovery commands below to find it
@@ -61,23 +61,40 @@ deactivate
 ### 3. Deploy Files
 
 ```bash
-# Copy Python script to Pi home directory
-scp internet_monitor.py pi@192.168.2.50:/home/pi/
+# Clone the repository on remote server
+git clone <your-repo-url> /home/username/workplace/home-network
 
-# Make script executable
-chmod +x /home/pi/internet_monitor.py
+# Navigate to wifi-reboot directory
+cd /home/username/workplace/home-network/resiliency/wifi-reboot
+
+# Run installation script
+./install.sh
 
 # Test script with virtual environment
-source ~/internet-monitor-env/bin/activate
-python3 /home/pi/internet_monitor.py
+source venv/bin/activate
+python3 internet_monitor.py
 deactivate
 ```
 
-### 4. Install systemd Service
+### 4. Configure Service
+
+```bash
+# Edit service file to set your smart plug IP and other settings
+nano /home/username/workplace/home-network/resiliency/wifi-reboot/config/internet-monitor.service
+
+# Replace 192.168.X.Z with your actual smart plug IP address
+# Adjust other environment variables as needed:
+# - CHECK_INTERVAL_IN_SECONDS (default: 60)
+# - FAILURE_THRESHOLD (default: 3)
+# - RESTART_DELAY_IN_SECONDS (default: 10)
+# - RECOVERY_WAIT_IN_SECONDS (default: 120)
+```
+
+### 5. Install systemd Service
 
 ```bash
 # Copy service file to systemd directory
-sudo cp internet-monitor.service /etc/systemd/system/
+sudo cp /home/username/workplace/home-network/resiliency/wifi-reboot/config/internet-monitor.service /etc/systemd/system/
 
 # Reload systemd configuration
 sudo systemctl daemon-reload
@@ -89,7 +106,7 @@ sudo systemctl enable internet-monitor.service
 sudo systemctl start internet-monitor.service
 ```
 
-### 4. Verify Installation
+### 6. Verify Installation
 
 ```bash
 # Check service status
@@ -167,8 +184,9 @@ sudo systemctl disable internet-monitor.service
 sudo journalctl -u internet-monitor.service -n 20
 
 # Test script manually with virtual environment
-source ~/internet-monitor-env/bin/activate
-python3 /home/pi/internet_monitor.py
+cd /home/username/workplace/home-network/resiliency/wifi-reboot
+source venv/bin/activate
+python3 internet_monitor.py
 deactivate
 ```
 
@@ -198,16 +216,17 @@ ping 192.168.X.Z
 **Missing dependencies:**
 ```bash
 # Reinstall in virtual environment
-source ~/internet-monitor-env/bin/activate
-pip install --upgrade python-kasa
+cd /home/username/workplace/home-network/resiliency/wifi-reboot
+source venv/bin/activate
+pip install --upgrade -r requirements.txt
 deactivate
 ```
 
 **Permission errors:**
 ```bash
 # Ensure correct ownership
-sudo chown pi:pi /home/pi/internet_monitor.py
-sudo chmod +x /home/pi/internet_monitor.py
+sudo chown -R username:username /home/username/workplace/home-network/resiliency/wifi-reboot
+chmod +x /home/username/workplace/home-network/resiliency/wifi-reboot/internet_monitor.py
 ```
 
 ### Log Analysis
