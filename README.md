@@ -2,36 +2,35 @@
 
 A modular home network infrastructure project focused on reliability, automation, and scalability.
 
-## Network Architecture
+## System Architecture
 
-```
-                    ┌─────────────────┐
-                    │   Public        │
-                    │   Internet      │
-                    └─────────┬───────┘
-                              │
-                    ┌─────────▼───────┐
-                    │   ISP Modem     │◄──── Smart Plug (Power Control)
-                    └─────────┬───────┘
-                              │
-                    ┌─────────▼───────┐
-                    │  Main Router    │
-                    │  192.168.1.x    │
-                    └─────────┬───────┘
-                              │ Ethernet
-                    ┌─────────▼───────┐
-                    │ Secondary Router│
-                    │  192.168.2.x    │
-                    └─────────┬───────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-   ┌────▼────┐         ┌─────▼─────┐         ┌─────▼─────┐
-   │HP Elite │         │   Smart   │         │  Future   │
-   │Desk 800 │         │   Plug    │         │ Devices   │
-   │(Compute)│         │(Control)  │         │           │
-   └─────────┘         └───────────┘         └───────────┘
-```
+### ISP Modem/Router (192.168.1.x)
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| **DHCP Server** | - | IP address assignment for home devices |
+| **Internet Gateway** | - | Route traffic to/from internet |
+
+### Secondary Router (192.168.2.x)
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| **DHCP Server** | - | IP assignment for cluster network |
+
+### HP EliteDesk 800 G1 DM (192.168.2.x)
+
+| Service | Module | Port | Application Type | Deployment Type | Purpose |
+|---------|--------|------|------------------|-----------------|---------|
+| **Internet Monitor** | Resiliency | - | Python - `python-kasa` | systemd | Ping tests, modem restart automation |
+| **Prometheus** | Monitoring | 9090 | Python - `prometheus_client` | Docker - `prom/prometheus` | Metrics collection, time-series database |
+| **Grafana** | Monitoring | 3000 | Web UI | Docker - `grafana/grafana` | Web dashboards, data visualization |
+| **OpenVPN Server** | Control | 1194 | `server.conf` | Native Package | Secure remote network access |
+
+### Smart Plugs (192.168.2.x)
+
+| Service | Purpose |
+|---------|---------|
+| **Remote Power Control** | Power cycle ISP modem on internet failures |
 
 ## Project Modules
 
@@ -41,38 +40,11 @@ A modular home network infrastructure project focused on reliability, automation
 ### Control
 - **[remote-access](control/remote-access/)** - Secure remote access to home network via OpenVPN
 
+### Monitoring
+- **[monitoring](monitoring/)** - Prometheus + Grafana infrastructure for metrics collection and visualization
+
 ### Future Modules
 - **storage/** - Network attached storage and backup solutions
-- **monitoring/** - Network and system monitoring infrastructure  
 - **automation/** - Smart home automation and control systems
 - **security/** - VPN, firewall, and access control
 
-## Core Principles
-
-1. **Modularity** - Each component can be developed and deployed independently
-2. **Reliability** - Redundant systems and automatic recovery mechanisms
-3. **Scalability** - Architecture supports growth from basic to enterprise-grade
-4. **Documentation** - Clear guides for setup, configuration, and troubleshooting
-
-## Getting Started
-
-1. Review the [networking documentation](docs/networking.md) for technical concepts
-2. Start with the [wifi-reboot module](resiliency/wifi-reboot/) for basic internet reliability
-3. Expand with additional modules based on your needs
-
-## Hardware Foundation
-
-- **Secondary Router**: Creates isolated network for control and monitoring
-- **HP EliteDesk 800 G1 DM**: Primary compute node running Ubuntu Desktop for services and applications
-- **Smart Plugs**: Remote power control for devices
-- **Network Switches**: Expand ethernet connectivity as needed
-
-## Network Ranges
-
-- **Main Network**: 192.168.1.x (existing home network)
-- **Secondary Network**: 192.168.2.x (control and monitoring network)
-- **Future VLANs**: 192.168.10.x+ (segmented networks for different purposes)
-
-## Documentation
-
-- **[docs/networking.md](docs/networking.md)** - Deep dive into networking concepts and router scaling
