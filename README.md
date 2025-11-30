@@ -24,7 +24,6 @@ A modular home network infrastructure project focused on reliability, automation
 | **Internet Monitor** | Resiliency | - | Python - `python-kasa` | systemd | Ping tests, modem restart automation |
 | **Prometheus** | Monitoring | 9090 | Python - `prometheus_client` | Docker - `prom/prometheus` | Metrics collection, time-series database |
 | **Grafana** | Monitoring | 3000 | Web UI | Docker - `grafana/grafana` | Web dashboards, data visualization |
-| **OpenVPN Server** | Control | 1194 | `server.conf` | Native Package | Secure remote network access |
 
 ### Smart Plugs (192.168.2.x)
 
@@ -38,7 +37,7 @@ A modular home network infrastructure project focused on reliability, automation
 - **[wifi-reboot](resiliency/wifi-reboot/)** - Automatic modem power cycling for internet reliability
 
 ### Control
-- **[remote-access](control/remote-access/)** - Secure remote access to home network via OpenVPN
+- **[remote-access](control/remote-access/)** - Secure remote access to home network via WireGuard
 
 ### Monitoring
 - **[monitoring](monitoring/)** - Prometheus + Grafana infrastructure for metrics collection and visualization
