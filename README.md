@@ -16,6 +16,7 @@ A modular home network infrastructure project focused on reliability, automation
 | Service | Port | Purpose |
 |---------|------|---------|
 | **DHCP Server** | - | IP assignment for cluster network |
+| **WireGuard Server** | 51820 | Secure remote access to cluster network |
 
 ### HP EliteDesk 800 G1 DM (192.168.2.x)
 
@@ -35,6 +36,7 @@ A modular home network infrastructure project focused on reliability, automation
 
 ### Resiliency
 - **[wifi-reboot](resiliency/wifi-reboot/)** - Automatic modem power cycling for internet reliability
+- **[ddns](resiliency/ddns/)** - Dynamic DNS updates for reliable remote access
 
 ### Control
 - **[remote-access](control/remote-access/)** - Secure remote access to home network via WireGuard
