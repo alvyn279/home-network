@@ -2,8 +2,8 @@
   "api_token": "your_cloudflare_api_token_here",
   "zone_id": "your_cloudflare_zone_id_here",
   "records": [
-    "home.alvynle.me",
-    "api.alvynle.me",
-    "ssh.alvynle.me"
+    "home.example.com",
+    "api.example.com",
+    "ssh.example.com"
   ]
 }

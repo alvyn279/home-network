@@ -9,8 +9,8 @@
 
 2. **Configure:**
    ```bash
-   cp config.json.example config.json
-   # Edit config.json with your Cloudflare credentials
+   cp .env.example .env
+   # Edit .env with your configuration
    ```
 
 3. **Test:**
@@ -19,39 +19,42 @@
    python ddns.py
    ```
 
-4. **Deploy (systemd):**
+4. **Deploy:**
    ```bash
-   sudo cp ddns.service ddns.timer /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now ddns.timer
+   ./update.sh
    ```
 
 ## Configuration
 
-### Option 1: Config file (recommended)
-Edit `config.json`:
-```json
-{
-  "api_token": "your_token",
-  "zone_id": "your_zone_id", 
-  "records": ["home.alvynle.me", "api.alvynle.me"]
-}
-```
-
-### Option 2: Environment variables
+Edit `.env` file:
 ```bash
-export CLOUDFLARE_API_TOKEN="your_token"
-export CLOUDFLARE_ZONE_ID="your_zone_id"
-export DDNS_RECORDS="home.alvynle.me,api.alvynle.me"
+# User configuration
+USERNAME=pi
+HOME_DIR=/home/pi
+
+# Cloudflare API credentials
+CLOUDFLARE_API_TOKEN=your_token
+CLOUDFLARE_ZONE_ID=your_zone_id
+DDNS_RECORDS=home.example.com,api.example.com,ssh.example.com
 ```
 
 ## Getting Cloudflare Credentials
 
 1. **API Token:** Cloudflare Dashboard → My Profile → API Tokens → Create Token
    - Template: "Edit zone DNS"
-   - Zone: alvynle.me
+   - Zone: example.com
    
-2. **Zone ID:** Cloudflare Dashboard → alvynle.me → Overview → Zone ID (right sidebar)
+2. **Zone ID:** Cloudflare Dashboard → example.com → Overview → Zone ID (right sidebar)
+
+## Updates
+
+```bash
+# Pull latest code and update service
+git pull
+./update.sh
+```
+
+The `.env` file is gitignored, so your local config won't be overwritten.
 
 ## Monitoring
 

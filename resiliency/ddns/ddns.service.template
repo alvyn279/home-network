@@ -1,0 +1,14 @@
+[Unit]
+Description=Dynamic DNS Update
+After=network.target
+
+[Service]
+Type=oneshot
+User=${USERNAME}
+WorkingDirectory=${HOME_DIR}/coding/q/home_cluster/resiliency/ddns
+Environment=CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+Environment=CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID}
+Environment=DDNS_RECORDS=${DDNS_RECORDS}
+ExecStart=${HOME_DIR}/coding/q/home_cluster/resiliency/ddns/venv/bin/python ${HOME_DIR}/coding/q/home_cluster/resiliency/ddns/ddns.py
+StandardOutput=journal
+StandardError=journal
