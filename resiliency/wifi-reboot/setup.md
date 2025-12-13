@@ -11,7 +11,7 @@
 
 ```bash
 # Method 1: Use python-kasa discovery
-source ~/internet-monitor-env/bin/activate
+source venv/bin/activate
 python3 -m kasa discover
 deactivate
 
@@ -21,8 +21,6 @@ nmap -sn 192.168.X.0/24
 # Method 3: Check router's DHCP client list
 # Navigate to your router's web interface (usually 192.168.X.1)
 ```
-
-**Note:** Replace `192.168.X.Z` in all configuration files with your actual smart plug IP address.
 
 ## Installation Steps
 
@@ -36,74 +34,59 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install python3-venv python3-pip -y
 ```
 
-### 2. Create Python Virtual Environment
+### 2. Setup Project
 
 ```bash
-# Run the install script
-./install.sh
-```
-
-**Or manually:**
-```bash
-# Create virtual environment
-python3 -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Deactivate for now
-deactivate
-```
-
-### 3. Deploy Files
-
-```bash
-# Clone the repository on remote server
+# Clone the repository
 git clone <your-repo-url> /home/username/workplace/home-network
 
 # Navigate to wifi-reboot directory
 cd /home/username/workplace/home-network/resiliency/wifi-reboot
 
-# Run installation script
+# Create virtual environment and install dependencies
 ./install.sh
+```
 
-# Test script with virtual environment and test configuration
+### 3. Configure Service
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit configuration
+nano .env
+```
+
+Edit `.env` with your settings:
+```bash
+# User configuration
+USERNAME=pi
+HOME_DIR=/home/pi
+
+# Internet monitor settings
+PLUG_IP=192.168.2.100
+CHECK_INTERVAL_IN_SECONDS=60
+FAILURE_THRESHOLD=3
+TEST_HOSTS=8.8.8.8,1.1.1.1,9.9.9.9
+RESTART_DELAY_IN_SECONDS=10
+RECOVERY_WAIT_IN_SECONDS=180
+```
+
+### 4. Test Configuration
+
+```bash
+# Test script manually
 source venv/bin/activate
-python3 internet_monitor.py --test
+python3 internet_monitor.py
+# Stop with Ctrl+C
 deactivate
 ```
 
-### 4. Configure Service
+### 5. Deploy Service
 
 ```bash
-# Edit service file to set your smart plug IP and other settings
-nano /home/username/workplace/home-network/resiliency/wifi-reboot/config/internet-monitor.service
-
-# Replace 192.168.X.Z with your actual smart plug IP address
-# Adjust other environment variables as needed:
-# - CHECK_INTERVAL_IN_SECONDS (default: 60)
-# - FAILURE_THRESHOLD (default: 3)
-# - RESTART_DELAY_IN_SECONDS (default: 10)
-# - RECOVERY_WAIT_IN_SECONDS (default: 120)
-```
-
-### 5. Install systemd Service
-
-```bash
-# Copy service file to systemd directory
-sudo cp /home/username/workplace/home-network/resiliency/wifi-reboot/config/internet-monitor.service /etc/systemd/system/
-
-# Reload systemd configuration
-sudo systemctl daemon-reload
-
-# Enable service (auto-start on boot)
-sudo systemctl enable internet-monitor.service
-
-# Start service now
-sudo systemctl start internet-monitor.service
+# Deploy systemd service with your configuration
+./update.sh
 ```
 
 ### 6. Verify Installation
@@ -114,39 +97,39 @@ sudo systemctl status internet-monitor.service
 
 # View live logs
 sudo journalctl -u internet-monitor.service -f
-
-# Test smart plug connectivity
-python3 -c "
-import asyncio
-from kasa import SmartPlug
-async def test():
-    plug = SmartPlug('192.168.2.100')
-    await plug.update()
-    print(f'Plug status: {plug.is_on}')
-asyncio.run(test())
-"
 ```
+
+## Updates
+
+```bash
+# Pull latest code and update service
+git pull
+./update.sh
+```
+
+The `.env` file is gitignored, so your local config won't be overwritten.
 
 ## Configuration
 
-### Environment Variables (in service file)
+### Environment Variables (in .env file)
 
+- **USERNAME**: System username (e.g., pi)
+- **HOME_DIR**: User home directory (e.g., /home/pi)
 - **PLUG_IP**: Smart plug IP address (default: 192.168.2.100)
-- **CHECK_INTERVAL**: Seconds between internet checks (default: 60)
+- **CHECK_INTERVAL_IN_SECONDS**: Seconds between internet checks (default: 60)
 - **FAILURE_THRESHOLD**: Failed checks before restart (default: 3)
 - **TEST_HOSTS**: Comma-separated ping targets (default: 8.8.8.8,1.1.1.1,9.9.9.9)
-- **RESTART_DELAY**: Seconds to keep modem off (default: 10)
-- **RECOVERY_WAIT**: Seconds to wait after restart (default: 120)
+- **RESTART_DELAY_IN_SECONDS**: Seconds to keep modem off (default: 10)
+- **RECOVERY_WAIT_IN_SECONDS**: Seconds to wait after restart (default: 180)
 
 ### Modify Configuration
 
 ```bash
-# Edit service file
-sudo nano /etc/systemd/system/internet-monitor.service
+# Edit .env file
+nano .env
 
-# Reload and restart after changes
-sudo systemctl daemon-reload
-sudo systemctl restart internet-monitor.service
+# Redeploy service
+./update.sh
 ```
 
 ## Service Management
@@ -183,8 +166,7 @@ sudo systemctl disable internet-monitor.service
 # Check for Python errors
 sudo journalctl -u internet-monitor.service -n 20
 
-# Test script manually with virtual environment
-cd /home/username/workplace/home-network/resiliency/wifi-reboot
+# Test script manually
 source venv/bin/activate
 python3 internet_monitor.py
 deactivate
@@ -192,41 +174,26 @@ deactivate
 
 **Can't find smart plug:**
 ```bash
-# Discover Kasa devices (with virtual environment)
-source ~/internet-monitor-env/bin/activate
+# Discover Kasa devices
+source venv/bin/activate
 python3 -m kasa discover
-
-# Or target specific network (replace X with your network number)
-python3 -c "
-import asyncio
-from kasa import Discover
-async def find():
-    devices = await Discover.discover(target='192.168.X.255')
-    for ip, dev in devices.items():
-        await dev.update()
-        print(f'Found: {ip} - {dev.alias} ({dev.model})')
-asyncio.run(find())
-"
 deactivate
 
-# Check network connectivity (replace with your plug's actual IP)
+# Check network connectivity
 ping 192.168.X.Z
 ```
 
 **Missing dependencies:**
 ```bash
-# Reinstall in virtual environment
-cd /home/username/workplace/home-network/resiliency/wifi-reboot
-source venv/bin/activate
-pip install --upgrade -r requirements.txt
-deactivate
+# Reinstall dependencies
+./install.sh
 ```
 
 **Permission errors:**
 ```bash
 # Ensure correct ownership
 sudo chown -R username:username /home/username/workplace/home-network/resiliency/wifi-reboot
-chmod +x /home/username/workplace/home-network/resiliency/wifi-reboot/internet_monitor.py
+chmod +x internet_monitor.py
 ```
 
 ### Log Analysis
@@ -244,27 +211,6 @@ sudo journalctl -u internet-monitor.service > monitor_logs.txt
 
 ## Testing
 
-## Testing
-
-### Manual Testing with Test Configuration
-
-```bash
-cd /home/username/workplace/home-network/resiliency/wifi-reboot
-source venv/bin/activate
-
-# Run script with test configuration
-python3 internet_monitor.py --test
-
-# Stop with Ctrl+C
-deactivate
-```
-
-The `test.env` file provides faster intervals and lower thresholds for testing:
-- Check interval: 10 seconds (vs 60 in production)
-- Failure threshold: 2 (vs 3 in production)  
-- Restart delay: 5 seconds (vs 10 in production)
-- Recovery wait: 30 seconds (vs 120 in production)
-
 ### Manual Testing
 
 ```bash
@@ -275,18 +221,20 @@ result = subprocess.run(['ping', '-c', '1', '8.8.8.8'], capture_output=True)
 print('Internet OK' if result.returncode == 0 else 'Internet DOWN')
 "
 
-# Test smart plug control (with virtual environment)
-source ~/internet-monitor-env/bin/activate
+# Test smart plug control
+source venv/bin/activate
 python3 -c "
 import asyncio
-from kasa import Discover
+from kasa import SmartPlug
 async def test():
-    device = await Discover.discover_single('192.168.X.Z')  # Replace with your plug's IP
+    plug = SmartPlug('192.168.2.100')  # Replace with your plug IP
+    await plug.update()
+    print(f'Plug status: {plug.is_on}')
     print('Turning OFF...')
-    await device.turn_off()
+    await plug.turn_off()
     await asyncio.sleep(2)
     print('Turning ON...')
-    await device.turn_on()
+    await plug.turn_on()
     print('Test complete')
 asyncio.run(test())
 "
