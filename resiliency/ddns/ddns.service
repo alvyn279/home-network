@@ -1,0 +1,11 @@
+[Unit]
+Description=Dynamic DNS Update
+After=network.target
+
+[Service]
+Type=oneshot
+User=alvynle
+WorkingDirectory=/Users/alvyn/coding/q/home_cluster/resiliency/ddns
+ExecStart=/Users/alvyn/coding/q/home_cluster/resiliency/ddns/venv/bin/python /Users/alvyn/coding/q/home_cluster/resiliency/ddns/ddns.py
+StandardOutput=journal
+StandardError=journal
