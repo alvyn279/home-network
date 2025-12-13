@@ -8,7 +8,7 @@ Wants=network.target
 Type=simple
 User=${USERNAME}
 Group=${USERNAME}
-WorkingDirectory=${HOME_DIR}/coding/q/home_cluster/resiliency/wifi-reboot
+WorkingDirectory=${HOME_DIR}/workplace/home-network/resiliency/wifi-reboot
 
 # Configuration via environment variables
 Environment=PLUG_IP=${PLUG_IP}
@@ -19,7 +19,7 @@ Environment=RESTART_DELAY_IN_SECONDS=${RESTART_DELAY_IN_SECONDS}
 Environment=RECOVERY_WAIT_IN_SECONDS=${RECOVERY_WAIT_IN_SECONDS}
 
 # Service execution
-ExecStart=${HOME_DIR}/coding/q/home_cluster/resiliency/wifi-reboot/venv/bin/python ${HOME_DIR}/coding/q/home_cluster/resiliency/wifi-reboot/internet_monitor.py
+ExecStart=${HOME_DIR}/workplace/home-network/resiliency/wifi-reboot/venv/bin/python ${HOME_DIR}/workplace/home-network/resiliency/wifi-reboot/internet_monitor.py
 Restart=always
 RestartSec=30
 
