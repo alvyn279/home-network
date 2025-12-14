@@ -9,6 +9,7 @@ import sys
 import json
 import logging
 import requests
+import argparse
 from datetime import datetime
 
 class CloudflareDDNS:
@@ -47,6 +48,32 @@ class CloudflareDDNS:
             logging.error(f"Failed to get record ID for {record_name}: {e}")
             return None
     
+    def create_record(self, record_name, ip):
+        """Create new A record"""
+        try:
+            response = requests.post(
+                f"{self.base_url}/zones/{self.zone_id}/dns_records",
+                headers=self.headers,
+                json={
+                    "type": "A",
+                    "name": record_name,
+                    "content": ip,
+                    "ttl": 300,
+                    "proxied": True
+                }
+            )
+            data = response.json()
+            
+            if data["success"]:
+                logging.info(f"Created {record_name} → {ip}")
+                return True
+            else:
+                logging.error(f"Failed to create {record_name}: {data}")
+                return False
+        except Exception as e:
+            logging.error(f"Failed to create {record_name}: {e}")
+            return False
+    
     def update_record(self, record_name, ip):
         """Update A record with new IP"""
         record_id = self.get_record_id(record_name)
@@ -76,6 +103,24 @@ class CloudflareDDNS:
         except Exception as e:
             logging.error(f"Failed to update {record_name}: {e}")
             return False
+    
+    def init_records(self, records):
+        """Initialize records - create if they don't exist"""
+        current_ip = self.get_public_ip()
+        if not current_ip:
+            return False
+            
+        success_count = 0
+        for record in records:
+            if self.get_record_id(record):
+                logging.info(f"Record {record} already exists")
+                success_count += 1
+            else:
+                if self.create_record(record, current_ip):
+                    success_count += 1
+                    
+        logging.info(f"Initialized {success_count}/{len(records)} records")
+        return success_count == len(records)
     
     def update_all(self, records):
         """Update all specified records with current IP"""
@@ -108,6 +153,11 @@ def load_config():
     }
 
 def main():
+    parser = argparse.ArgumentParser(description="Dynamic DNS updater for Cloudflare")
+    parser.add_argument("--init", action="store_true", 
+                       help="Initialize records (create if they don't exist)")
+    args = parser.parse_args()
+    
     # Setup logging
     logging.basicConfig(
         level=logging.INFO,
@@ -125,14 +175,21 @@ def main():
         logging.error("No records specified")
         sys.exit(1)
     
-    # Update DNS records
+    # Initialize or update DNS records
     ddns = CloudflareDDNS(config["api_token"], config["zone_id"])
     
-    if ddns.update_all(config["records"]):
-        logging.info("DDNS update completed successfully")
+    if args.init:
+        if ddns.init_records(config["records"]):
+            logging.info("DDNS initialization completed successfully")
+        else:
+            logging.error("DDNS initialization failed")
+            sys.exit(1)
     else:
-        logging.error("DDNS update failed")
-        sys.exit(1)
+        if ddns.update_all(config["records"]):
+            logging.info("DDNS update completed successfully")
+        else:
+            logging.error("DDNS update failed")
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()

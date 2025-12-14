@@ -13,13 +13,19 @@
    # Edit .env with your configuration
    ```
 
-3. **Test:**
+3. **Initialize records:**
    ```bash
    source venv/bin/activate
-   python ddns.py
+   python ddns.py --init
    ```
 
-4. **Deploy:**
+4. **Test updates:**
+   ```bash
+   python ddns.py
+   deactivate
+   ```
+
+5. **Deploy:**
    ```bash
    ./update.sh
    ```
@@ -37,6 +43,20 @@ CLOUDFLARE_API_TOKEN=your_token
 CLOUDFLARE_ZONE_ID=your_zone_id
 DDNS_RECORDS=home.example.com,api.example.com,ssh.example.com
 ```
+
+## Usage
+
+### Initialize Records (First Time)
+```bash
+python ddns.py --init
+```
+Creates DNS records if they don't exist, with proxy enabled.
+
+### Update Records (Normal Operation)
+```bash
+python ddns.py
+```
+Updates existing records with current public IP.
 
 ## Getting Cloudflare Credentials
 
