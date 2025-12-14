@@ -33,8 +33,8 @@ rm /tmp/ddns.service /tmp/ddns.timer
 echo "Reloading systemd configuration..."
 sudo systemctl daemon-reload
 
-echo "Restarting timer..."
-sudo systemctl restart ddns.timer
+echo "Enabling and starting timer..."
+sudo systemctl enable --now ddns.timer
 
 # Check status
 echo "Timer status:"
