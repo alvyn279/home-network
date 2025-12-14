@@ -11,6 +11,7 @@ import logging
 import requests
 import argparse
 from datetime import datetime
+from dotenv import load_dotenv
 
 class CloudflareDDNS:
     def __init__(self, api_token, zone_id):
@@ -137,15 +138,9 @@ class CloudflareDDNS:
         return success_count == len(records)
 
 def load_config():
-    """Load configuration from environment or config file"""
-    config_file = os.path.join(os.path.dirname(__file__), "config.json")
+    """Load configuration from .env file"""
+    load_dotenv()
     
-    # Try config file first
-    if os.path.exists(config_file):
-        with open(config_file) as f:
-            return json.load(f)
-    
-    # Fall back to environment variables
     return {
         "api_token": os.getenv("CLOUDFLARE_API_TOKEN"),
         "zone_id": os.getenv("CLOUDFLARE_ZONE_ID"),

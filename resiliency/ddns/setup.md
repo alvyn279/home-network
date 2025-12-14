@@ -3,70 +3,142 @@
 ## Prerequisites
 - Domain name (any registrar)
 - Cloudflare account (free)
+- Python 3.6+ with pip
 
 ## Setup Steps
 
 ### 1. Domain Configuration
+1. **Add domain to Cloudflare dashboard**
+2. **Change nameservers** at registrar to Cloudflare's nameservers
+3. **Wait for DNS propagation** (up to 48 hours, usually <1 hour)
+
+### 2. Get Cloudflare Credentials
+
+**API Token:**
+1. Cloudflare Dashboard → My Profile → API Tokens → Create Token
+2. Use "Edit zone DNS" template
+3. Select your domain zone
+4. Save the token securely
+
+**Zone ID:**
+1. Cloudflare Dashboard → Your Domain → Overview
+2. Copy Zone ID from right sidebar
+
+### 3. Install and Configure
+
 ```bash
-# Add domain to Cloudflare dashboard
-# Change nameservers at registrar to Cloudflare's
-# Create A record: home.yourdomain.com → current IP (proxy OFF)
+# Clone repository
+git clone <your-repo-url> /home/username/workplace/home-network
+
+# Navigate to DDNS directory
+cd /home/username/workplace/home-network/resiliency/ddns
+
+# Setup virtual environment and dependencies
+./install.sh
+
+# Configure environment
+cp .env.example .env
+nano .env
 ```
 
-### 2. API Access
+**Edit `.env` file:**
 ```bash
-# Cloudflare dashboard → My Profile → API Tokens
-# Create custom token with Zone:DNS:Edit permissions
-# Save token securely
+# User configuration
+USERNAME=pi
+HOME_DIR=/home/pi
+
+# Cloudflare API credentials
+CLOUDFLARE_API_TOKEN=your_cloudflare_api_token_here
+CLOUDFLARE_ZONE_ID=your_cloudflare_zone_id_here
+
+# DNS records to update
+DDNS_RECORDS=home.example.com,api.example.com
 ```
 
-### 3. Get IDs
-```bash
-# Zone ID
-curl -X GET "https://api.cloudflare.com/client/v4/zones" \
-  -H "Authorization: Bearer YOUR_TOKEN" | jq '.result[] | select(.name=="yourdomain.com") | .id'
+### 4. Initialize DNS Records
 
-# Record ID
-curl -X GET "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records" \
-  -H "Authorization: Bearer YOUR_TOKEN" | jq '.result[] | select(.name=="home.yourdomain.com") | .id'
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Create DNS records (first time only)
+python ddns.py --init
+
+# Test updates
+python ddns.py
+
+# Deactivate environment
+deactivate
 ```
 
-### 4. Update Script
+### 5. Deploy Automatic Updates
+
 ```bash
-# Create /home/username/update-dns.sh
-#!/bin/bash
-ZONE_ID="your_zone_id"
-RECORD_ID="your_record_id"
-API_TOKEN="your_token"
+# Deploy systemd service and timer
+./update.sh
 
-CURRENT_IP=$(curl -s https://ipv4.icanhazip.com)
-curl -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID" \
-  -H "Authorization: Bearer $API_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data "{\"type\":\"A\",\"name\":\"home\",\"content\":\"$CURRENT_IP\",\"ttl\":300}"
-
-chmod +x /home/username/update-dns.sh
-```
-
-### 5. Automation
-```bash
-# Add to crontab
-crontab -e
-*/5 * * * * /home/username/update-dns.sh
-```
-
-### 6. WireGuard Integration
-```ini
-# Update WireGuard config
-[Peer]
-Endpoint = home.yourdomain.com:51820
+# Check service status
+sudo systemctl status ddns.timer
+sudo systemctl status ddns.service
 ```
 
 ## Verification
+
 ```bash
 # Test DNS resolution
-nslookup home.yourdomain.com
+nslookup home.example.com
 
-# Test script
-./update-dns.sh
+# Check service logs
+sudo journalctl -u ddns.service -f
+
+# Manual test
+source venv/bin/activate
+python ddns.py
 ```
+
+## Updates
+
+```bash
+# Pull latest code and redeploy
+git pull
+./update.sh
+```
+
+The `.env` file is gitignored, so your local configuration won't be overwritten.
+
+## Service Management
+
+```bash
+# Start/stop timer
+sudo systemctl start ddns.timer
+sudo systemctl stop ddns.timer
+
+# View logs
+sudo journalctl -u ddns.service -n 50
+
+# Check timer schedule
+sudo systemctl list-timers ddns.timer
+```
+
+## Troubleshooting
+
+**Service won't start:**
+```bash
+# Check configuration
+source venv/bin/activate
+python ddns.py --init
+deactivate
+
+# Check logs
+sudo journalctl -u ddns.service -n 20
+```
+
+**API errors:**
+- Verify API token has "Zone:DNS:Edit" permissions
+- Check Zone ID matches your domain
+- Ensure records exist (run with `--init` flag)
+
+**DNS not updating:**
+- Check Cloudflare dashboard for recent API activity
+- Verify your public IP: `curl ipv4.icanhazip.com`
+- Test manual update: `python ddns.py`
