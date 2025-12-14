@@ -90,7 +90,8 @@ class CloudflareDDNS:
                     "type": "A",
                     "name": record_name,
                     "content": ip,
-                    "ttl": 300
+                    "ttl": 300,
+                    "proxied": True
                 }
             )
             data = response.json()
