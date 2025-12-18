@@ -41,7 +41,7 @@ HOME_DIR=/home/pi
 # Cloudflare API credentials
 CLOUDFLARE_API_TOKEN=your_token
 CLOUDFLARE_ZONE_ID=your_zone_id
-DDNS_RECORDS=home.example.com,api.example.com,ssh.example.com
+DDNS_RECORDS=dashboard.example.com,api.example.com,ssh.example.com
 ```
 
 ## Usage
@@ -57,6 +57,21 @@ Creates DNS records if they don't exist, with proxy enabled.
 python ddns.py
 ```
 Updates existing records with current public IP.
+
+### Create One-Time Records
+```bash
+# Create with proxy (default)
+python ddns.py --add-record-once dashboard.example.com
+
+# Create without proxy (DNS only)
+python ddns.py --add-record-once wireguard.example.com --non-proxy
+
+# Create with custom IP
+python ddns.py --add-record-once test.example.com --ip 1.2.3.4
+
+# Create with custom IP and no proxy
+python ddns.py --add-record-once wireguard.example.com --ip 1.2.3.4 --non-proxy
+```
 
 ## Getting Cloudflare Credentials
 

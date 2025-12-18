@@ -67,6 +67,11 @@ python ddns.py --init
 # Test updates
 python ddns.py
 
+# Create one-time records
+python ddns.py --add-record-once dashboard.example.com              # With proxy (default)
+python ddns.py --add-record-once wireguard.example.com --non-proxy  # DNS only
+python ddns.py --add-record-once test.example.com --ip 1.2.3.4 --non-proxy  # Custom IP, DNS only
+
 # Deactivate environment
 deactivate
 ```

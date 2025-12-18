@@ -9,6 +9,7 @@ WorkingDirectory=${HOME_DIR}/workplace/home-network/resiliency/ddns
 Environment=CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
 Environment=CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID}
 Environment=DDNS_RECORDS=${DDNS_RECORDS}
+Environment=DDNS_NON_PROXY_RECORDS=${DDNS_NON_PROXY_RECORDS}
 ExecStart=${HOME_DIR}/workplace/home-network/resiliency/ddns/venv/bin/python ${HOME_DIR}/workplace/home-network/resiliency/ddns/ddns.py
 StandardOutput=journal
 StandardError=journal
