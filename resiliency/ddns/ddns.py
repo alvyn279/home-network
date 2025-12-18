@@ -124,7 +124,44 @@ class CloudflareDDNS:
         logging.info(f"Initialized {success_count}/{len(records)} records")
         return success_count == len(records)
     
-    def update_all(self, records):
+    def create_non_proxy_record(self, record_name, custom_ip=None):
+        """Create A record without proxy (DNS only)"""
+        if custom_ip:
+            current_ip = custom_ip
+            logging.info(f"Using custom IP: {current_ip}")
+        else:
+            current_ip = self.get_public_ip()
+            if not current_ip:
+                return False
+            
+        # Check if record already exists
+        if self.get_record_id(record_name):
+            logging.info(f"Record {record_name} already exists")
+            return True
+            
+        try:
+            response = requests.post(
+                f"{self.base_url}/zones/{self.zone_id}/dns_records",
+                headers=self.headers,
+                json={
+                    "type": "A",
+                    "name": record_name,
+                    "content": current_ip,
+                    "ttl": 300,
+                    "proxied": False  # DNS only
+                }
+            )
+            data = response.json()
+            
+            if data["success"]:
+                logging.info(f"Created {record_name} → {current_ip} (DNS only)")
+                return True
+            else:
+                logging.error(f"Failed to create {record_name}: {data}")
+                return False
+        except Exception as e:
+            logging.error(f"Failed to create {record_name}: {e}")
+            return False
         """Update all specified records with current IP"""
         current_ip = self.get_public_ip()
         if not current_ip:
@@ -152,6 +189,10 @@ def main():
     parser = argparse.ArgumentParser(description="Dynamic DNS updater for Cloudflare")
     parser.add_argument("--init", action="store_true", 
                        help="Initialize records (create if they don't exist)")
+    parser.add_argument("--add-non-proxy-record", metavar="RECORD_NAME",
+                       help="Create A record without proxy (DNS only, one-time)")
+    parser.add_argument("--ip", metavar="IP_ADDRESS",
+                       help="Use custom IP address instead of auto-detecting")
     args = parser.parse_args()
     
     # Setup logging
@@ -171,10 +212,16 @@ def main():
         logging.error("No records specified")
         sys.exit(1)
     
-    # Initialize or update DNS records
+    # Initialize, create non-proxy record, or update DNS records
     ddns = CloudflareDDNS(config["api_token"], config["zone_id"])
     
-    if args.init:
+    if args.add_non_proxy_record:
+        if ddns.create_non_proxy_record(args.add_non_proxy_record, args.ip):
+            logging.info(f"Non-proxy record creation completed for {args.add_non_proxy_record}")
+        else:
+            logging.error(f"Non-proxy record creation failed for {args.add_non_proxy_record}")
+            sys.exit(1)
+    elif args.init:
         if ddns.init_records(config["records"]):
             logging.info("DDNS initialization completed successfully")
         else:
