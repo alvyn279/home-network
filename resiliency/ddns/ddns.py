@@ -75,7 +75,7 @@ class CloudflareDDNS:
             logging.error(f"Failed to create {record_name}: {e}")
             return False
     
-    def update_record(self, record_name, ip):
+    def update_record(self, record_name, ip, proxied=True):
         """Update A record with new IP"""
         record_id = self.get_record_id(record_name)
         if not record_id:
@@ -91,13 +91,14 @@ class CloudflareDDNS:
                     "name": record_name,
                     "content": ip,
                     "ttl": 300,
-                    "proxied": True
+                    "proxied": proxied
                 }
             )
             data = response.json()
             
             if data["success"]:
-                logging.info(f"Updated {record_name} → {ip}")
+                proxy_status = "proxied" if proxied else "DNS only"
+                logging.info(f"Updated {record_name} → {ip} ({proxy_status})")
                 return True
             else:
                 logging.error(f"Failed to update {record_name}: {data}")
@@ -162,18 +163,32 @@ class CloudflareDDNS:
         except Exception as e:
             logging.error(f"Failed to create {record_name}: {e}")
             return False
+    
+    def update_all(self, records, non_proxy_records=None):
         """Update all specified records with current IP"""
         current_ip = self.get_public_ip()
         if not current_ip:
             return False
             
+        # Filter out empty strings
+        records = [r for r in records if r.strip()]
+        non_proxy_records = [r for r in (non_proxy_records or []) if r.strip()]
+        
         success_count = 0
+        total_records = len(records) + len(non_proxy_records)
+        
+        # Update proxied records
         for record in records:
-            if self.update_record(record, current_ip):
+            if self.update_record(record, current_ip, proxied=True):
+                success_count += 1
+        
+        # Update non-proxy records
+        for record in non_proxy_records:
+            if self.update_record(record, current_ip, proxied=False):
                 success_count += 1
                 
-        logging.info(f"Updated {success_count}/{len(records)} records")
-        return success_count == len(records)
+        logging.info(f"Updated {success_count}/{total_records} records")
+        return success_count == total_records
 
 def load_config():
     """Load configuration from .env file"""
@@ -182,7 +197,8 @@ def load_config():
     return {
         "api_token": os.getenv("CLOUDFLARE_API_TOKEN"),
         "zone_id": os.getenv("CLOUDFLARE_ZONE_ID"),
-        "records": os.getenv("DDNS_RECORDS", "").split(",")
+        "records": os.getenv("DDNS_RECORDS", "").split(","),
+        "non_proxy_records": os.getenv("DDNS_NON_PROXY_RECORDS", "").split(",")
     }
 
 def main():
@@ -228,7 +244,7 @@ def main():
             logging.error("DDNS initialization failed")
             sys.exit(1)
     else:
-        if ddns.update_all(config["records"]):
+        if ddns.update_all(config["records"], config["non_proxy_records"]):
             logging.info("DDNS update completed successfully")
         else:
             logging.error("DDNS update failed")
