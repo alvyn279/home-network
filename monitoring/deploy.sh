@@ -6,8 +6,8 @@ if [ -f .env ]; then
 fi
 
 # Configure firewall rules
-ufw allow ${GRAFANA_PORT:-3000}  # Grafana
-ufw allow ${PROMETHEUS_PORT:-9090}  # Prometheus
+sudo ufw allow ${GRAFANA_PORT:-3000}  # Grafana
+sudo ufw allow ${PROMETHEUS_PORT:-9090}  # Prometheus
 
 # Start monitoring services
 docker compose up -d
