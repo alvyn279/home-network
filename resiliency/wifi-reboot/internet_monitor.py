@@ -11,25 +11,48 @@ import subprocess
 import logging
 import random
 import time
+import argparse
 from datetime import datetime
+
 from kasa import Discover
 from dotenv import load_dotenv
+from prometheus_client import Counter, start_http_server
 
-# Load test environment if --test flag is provided
-TEST_MODE = '--test' in sys.argv
-if TEST_MODE:
-    load_dotenv('test.env')
-    print("Loaded test configuration from test.env")
-
-# Configure logging
+# Configure logging (will be updated based on test mode in constructor)
 logging.basicConfig(
-    level=logging.DEBUG if TEST_MODE else logging.INFO,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('internet-monitor')
 
 class InternetMonitor:
-    def __init__(self):
+    def __init__(self, test_mode=False, metrics_enabled=False):
+        self.test_mode = test_mode
+        self.metrics_enabled = metrics_enabled
+        
+        # Set logging level based on test mode
+        if self.test_mode:
+            logging.getLogger().setLevel(logging.DEBUG)
+        
+        # Load test environment if in test mode
+        if self.test_mode:
+            load_dotenv('test.env')
+            print("Loaded test configuration from test.env")
+        
+        # Initialize Prometheus metrics if enabled
+        if self.metrics_enabled:
+            self.ping_success_counter = Counter('ping_success_total', 'Successful ping attempts', ['host'])
+            self.ping_failure_counter = Counter('ping_failure_total', 'Failed ping attempts', ['host'])
+            self.internet_up_counter = Counter('internet_up_total', 'Internet connectivity checks that passed')
+            self.internet_down_counter = Counter('internet_down_total', 'Internet connectivity checks that failed')
+            self.modem_restart_counter = Counter('modem_restart_total', 'Number of modem restarts triggered')
+        else:
+            self.ping_success_counter = None
+            self.ping_failure_counter = None
+            self.internet_up_counter = None
+            self.internet_down_counter = None
+            self.modem_restart_counter = None
+        
         # Load configuration from environment variables
         self.plug_ip = os.getenv('PLUG_IP')
         self.check_interval_in_seconds = int(os.getenv('CHECK_INTERVAL_IN_SECONDS'))
@@ -43,7 +66,7 @@ class InternetMonitor:
         self.last_stats_report = time.time()
         
         # Outage simulation for test mode only
-        if TEST_MODE:
+        if self.test_mode:
             self.simulate_outage = os.getenv('SIMULATE_OUTAGE', 'false').lower() == 'true'
             self.start_time = time.time()
             self.outage_trigger_time = None
@@ -65,7 +88,7 @@ class InternetMonitor:
     def ping_test(self, host):
         """Test connectivity to a single host"""
         # Outage simulation (test mode only)
-        if TEST_MODE:
+        if self.test_mode:
             current_time = time.time()
             
             # Check if we should trigger outage simulation (only once)
@@ -90,7 +113,7 @@ class InternetMonitor:
         
         success = False
         try:
-            if TEST_MODE:
+            if self.test_mode:
                 logger.debug(f"Pinging {host}...")
             
             result = subprocess.run(
@@ -102,7 +125,7 @@ class InternetMonitor:
             
             success = result.returncode == 0
             
-            if TEST_MODE:
+            if self.test_mode:
                 if success:
                     # Extract ping time from output
                     output_lines = result.stdout.strip().split('\n')
@@ -116,15 +139,15 @@ class InternetMonitor:
                     logger.debug(f"✗ {host} failed (exit code: {result.returncode})")
             
         except subprocess.TimeoutExpired:
-            if TEST_MODE:
+            if self.test_mode:
                 logger.debug(f"✗ {host} timed out (>5s)")
             success = False
         except Exception as e:
             logger.error(f"Ping error to {host}: {e}")
             success = False
         
-        # Update stats (production mode only)
-        if not TEST_MODE:
+        # Update logged stats
+        if not self.test_mode:
             self.stats[host]['total'] += 1
             if success:
                 self.stats[host]['success'] += 1
@@ -134,6 +157,13 @@ class InternetMonitor:
             if current_time - self.last_stats_report >= 3600:  # 1 hour
                 self.report_hourly_stats()
                 self.last_stats_report = current_time
+        
+        # Update Prometheus metrics (if enabled)
+        if self.metrics_enabled:
+            if success:
+                self.ping_success_counter.labels(host=host).inc()
+            else:
+                self.ping_failure_counter.labels(host=host).inc()
         
         return success
     
@@ -154,14 +184,21 @@ class InternetMonitor:
     
     def check_internet(self):
         """Test internet connectivity using multiple hosts"""
-        # Randomize test order for better load distribution
-        hosts = self.test_hosts.copy()
-        random.shuffle(hosts)
+        internet_available = False
         
-        for host in hosts:
+        # Ping all hosts to get complete metrics
+        for host in self.test_hosts:
             if self.ping_test(host):
-                return True
-        return False
+                internet_available = True
+        
+        # Update internet connectivity metrics (if enabled)
+        if self.metrics_enabled:
+            if internet_available:
+                self.internet_up_counter.inc()
+            else:
+                self.internet_down_counter.inc()
+        
+        return internet_available
     
     async def restart_modem(self):
         """Power cycle the modem via smart plug"""
@@ -180,6 +217,10 @@ class InternetMonitor:
             await device.turn_on()
             logger.info("Modem powered ON")
             logger.info(f"Waiting {self.recovery_wait_in_seconds}s for modem recovery...")
+            
+            # Update modem restart metrics (if enabled)
+            if self.metrics_enabled:
+                self.modem_restart_counter.inc()
             
         except Exception as e:
             logger.error(f"Failed to restart modem: {e}")
@@ -222,7 +263,27 @@ class InternetMonitor:
 
 def main():
     """Entry point"""
-    monitor = InternetMonitor()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Internet Monitor - Automatic Modem Reset")
+    parser.add_argument("--test", action="store_true", 
+                       help="Run in test mode with test.env configuration")
+    parser.add_argument("--with-metrics", action="store_true",
+                       help="Enable Prometheus metrics server")
+    parser.add_argument("--metrics-port", type=int, default=8000,
+                       help="Port for Prometheus metrics server (default: 8000)")
+    args = parser.parse_args()
+    
+    # Start Prometheus metrics server if enabled
+    if args.with_metrics:
+        try:
+            start_http_server(args.metrics_port)
+            logger.info(f"📊 Prometheus metrics server started on port {args.metrics_port}")
+            logger.info(f"   Metrics available at http://localhost:{args.metrics_port}/metrics")
+        except Exception as e:
+            logger.error(f"Failed to start metrics server on port {args.metrics_port}: {e}")
+            sys.exit(1)
+    
+    monitor = InternetMonitor(test_mode=args.test, metrics_enabled=args.with_metrics)
     try:
         asyncio.run(monitor.monitor())
     except KeyboardInterrupt:

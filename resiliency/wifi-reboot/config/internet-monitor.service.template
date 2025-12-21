@@ -19,7 +19,7 @@ Environment=RESTART_DELAY_IN_SECONDS=${RESTART_DELAY_IN_SECONDS}
 Environment=RECOVERY_WAIT_IN_SECONDS=${RECOVERY_WAIT_IN_SECONDS}
 
 # Service execution
-ExecStart=${HOME_DIR}/workplace/home-network/resiliency/wifi-reboot/venv/bin/python ${HOME_DIR}/workplace/home-network/resiliency/wifi-reboot/internet_monitor.py
+ExecStart=${HOME_DIR}/workplace/home-network/resiliency/wifi-reboot/venv/bin/python ${HOME_DIR}/workplace/home-network/resiliency/wifi-reboot/internet_monitor.py --with-metrics
 Restart=always
 RestartSec=30
 

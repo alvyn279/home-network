@@ -78,6 +78,18 @@ RECOVERY_WAIT_IN_SECONDS=180
 # Test script manually
 source venv/bin/activate
 python3 internet_monitor.py
+
+# Test with metrics enabled (default port 8000)
+python3 internet_monitor.py --with-metrics
+curl http://localhost:8000/metrics
+
+# Test with custom metrics port
+python3 internet_monitor.py --with-metrics --metrics-port 9000
+curl http://localhost:9000/metrics
+
+# Test mode with metrics
+python3 internet_monitor.py --test --with-metrics
+
 # Stop with Ctrl+C
 deactivate
 ```
@@ -253,4 +265,53 @@ sudo journalctl -u internet-monitor.service -f
 
 # Restore internet
 sudo iptables -F OUTPUT
+```
+
+## Prometheus Metrics
+
+When deployed with `--with-metrics` flag, the service exposes metrics on port 8000:
+
+### Available Metrics
+- `ping_success_total{host}` - Successful ping counter per host
+- `ping_failure_total{host}` - Failed ping counter per host  
+- `internet_up_total` - Internet connectivity checks that passed
+- `internet_down_total` - Internet connectivity checks that failed
+- `modem_restart_total` - Number of modem restarts triggered
+
+### Availability Calculations
+```promql
+# 1-minute availability
+rate(internet_up_total[1m]) / (rate(internet_up_total[1m]) + rate(internet_down_total[1m])) * 100
+
+# 5-minute availability  
+rate(internet_up_total[5m]) / (rate(internet_up_total[5m]) + rate(internet_down_total[5m])) * 100
+```
+
+### Testing Metrics
+```bash
+# Check metrics endpoint (default port)
+curl http://192.168.0.68:8000/metrics
+
+# Check metrics endpoint (custom port)
+curl http://192.168.0.68:9000/metrics
+
+# Test locally with metrics
+source venv/bin/activate
+python internet_monitor.py --with-metrics
+curl http://localhost:8000/metrics
+
+# Test with custom port
+python internet_monitor.py --with-metrics --metrics-port 9100
+curl http://localhost:9100/metrics
+```
+
+### Command Line Options
+```bash
+# Show all available options
+python internet_monitor.py --help
+
+# Available flags:
+--test                    # Run in test mode with test.env
+--with-metrics           # Enable Prometheus metrics server
+--metrics-port PORT      # Custom metrics port (default: 8000)
 ```
