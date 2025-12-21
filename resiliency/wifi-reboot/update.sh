@@ -32,6 +32,12 @@ rm /tmp/internet-monitor.service
 echo "Reloading systemd configuration..."
 sudo systemctl daemon-reload
 
+# Configure firewall for metrics port (if UFW is active and metrics port is set)
+if command -v ufw >/dev/null 2>&1 && sudo ufw status | grep -q "Status: active" && [ -n "${METRICS_PORT}" ]; then
+    echo "Configuring firewall for metrics port ${METRICS_PORT}..."
+    sudo ufw allow ${METRICS_PORT}
+fi
+
 echo "Restarting service..."
 sudo systemctl restart internet-monitor.service
 
