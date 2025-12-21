@@ -276,9 +276,9 @@ def main():
     # Start Prometheus metrics server if enabled
     if args.with_metrics:
         try:
-            start_http_server(args.metrics_port)
-            logger.info(f"📊 Prometheus metrics server started on port {args.metrics_port}")
-            logger.info(f"   Metrics available at http://localhost:{args.metrics_port}/metrics")
+            start_http_server(args.metrics_port, addr='0.0.0.0')
+            logger.info(f"📊 Prometheus metrics server started on 0.0.0.0:{args.metrics_port}")
+            logger.info(f"   Metrics available at /metrics endpoint")
         except Exception as e:
             logger.error(f"Failed to start metrics server on port {args.metrics_port}: {e}")
             sys.exit(1)
