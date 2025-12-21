@@ -1,0 +1,32 @@
+# Internet Monitor PromQL Queries
+# Use these queries in Grafana dashboards
+
+# Internet Uptime Percentage (last 5 minutes)
+rate(internet_up_total[5m]) / (rate(internet_up_total[5m]) + rate(internet_down_total[5m])) * 100
+
+# Internet Uptime Percentage (last 1 hour)
+rate(internet_up_total[1h]) / (rate(internet_up_total[1h]) + rate(internet_down_total[1h])) * 100
+
+# Ping Success Rate by Host (last 5 minutes)
+rate(ping_success_total[5m]) / (rate(ping_success_total[5m]) + rate(ping_failure_total[5m])) * 100
+
+# Ping Success Rate by Host (last 1 hour)
+rate(ping_success_total[1h]) / (rate(ping_success_total[1h]) + rate(ping_failure_total[1h])) * 100
+
+# Total Modem Restarts (last 24 hours)
+increase(modem_restart_total[24h])
+
+# Modem Restarts per Hour
+rate(modem_restart_total[1h]) * 3600
+
+# Internet Down Events (last 24 hours)
+increase(internet_down_total[24h])
+
+# Current Internet Status (1 = up, 0 = down)
+rate(internet_up_total[1m]) > 0
+
+# Ping Failure Count by Host (last 1 hour)
+increase(ping_failure_total[1h])
+
+# Average Internet Uptime (last 24 hours)
+avg_over_time((rate(internet_up_total[5m]) / (rate(internet_up_total[5m]) + rate(internet_down_total[5m])))[24h:5m]) * 100

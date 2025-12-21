@@ -39,20 +39,6 @@ class InternetMonitor:
             load_dotenv('test.env')
             print("Loaded test configuration from test.env")
         
-        # Initialize Prometheus metrics if enabled
-        if self.metrics_enabled:
-            self.ping_success_counter = Counter('ping_success_total', 'Successful ping attempts', ['host'])
-            self.ping_failure_counter = Counter('ping_failure_total', 'Failed ping attempts', ['host'])
-            self.internet_up_counter = Counter('internet_up_total', 'Internet connectivity checks that passed')
-            self.internet_down_counter = Counter('internet_down_total', 'Internet connectivity checks that failed')
-            self.modem_restart_counter = Counter('modem_restart_total', 'Number of modem restarts triggered')
-        else:
-            self.ping_success_counter = None
-            self.ping_failure_counter = None
-            self.internet_up_counter = None
-            self.internet_down_counter = None
-            self.modem_restart_counter = None
-        
         # Load configuration from environment variables
         self.plug_ip = os.getenv('PLUG_IP')
         self.check_interval_in_seconds = int(os.getenv('CHECK_INTERVAL_IN_SECONDS'))
@@ -60,6 +46,16 @@ class InternetMonitor:
         self.test_hosts = os.getenv('TEST_HOSTS').split(',')
         self.restart_delay_in_seconds = int(os.getenv('RESTART_DELAY_IN_SECONDS'))
         self.recovery_wait_in_seconds = int(os.getenv('RECOVERY_WAIT_IN_SECONDS'))
+        
+        # Initialize Prometheus metrics if enabled (after test_hosts is loaded)
+        if self.metrics_enabled:
+            self._initialize_prom_metrics(self.test_hosts)
+        else:
+            self.ping_success_counter = None
+            self.ping_failure_counter = None
+            self.internet_up_counter = None
+            self.internet_down_counter = None
+            self.modem_restart_counter = None
         
         # Stats tracking for production
         self.stats = {host: {'success': 0, 'total': 0} for host in self.test_hosts}
@@ -84,6 +80,22 @@ class InternetMonitor:
         logger.info(f"  Check Interval: {self.check_interval_in_seconds}s")
         logger.info(f"  Failure Threshold: {self.failure_threshold}")
         logger.info(f"  Test Hosts: {', '.join(self.test_hosts)}")
+        
+    def _initialize_prom_metrics(self, hosts):
+        """Initialize Prometheus metrics and ensure they exist from startup"""
+        self.ping_success_counter = Counter('ping_success_total', 'Successful ping attempts', ['host'])
+        self.ping_failure_counter = Counter('ping_failure_total', 'Failed ping attempts', ['host'])
+        self.internet_up_counter = Counter('internet_up_total', 'Internet connectivity checks that passed')
+        self.internet_down_counter = Counter('internet_down_total', 'Internet connectivity checks that failed')
+        self.modem_restart_counter = Counter('modem_restart_total', 'Number of modem restarts triggered')
+        
+        # Initialize all metrics to ensure they exist from startup
+        for host in hosts:
+            self.ping_success_counter.labels(host=host).inc(0)
+            self.ping_failure_counter.labels(host=host).inc(0)
+        self.internet_up_counter.inc(0)
+        self.internet_down_counter.inc(0)
+        self.modem_restart_counter.inc(0)
         
     def ping_test(self, host):
         """Test connectivity to a single host"""
